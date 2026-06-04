@@ -25,3 +25,52 @@ services:
       - ./config/qbittorrent:/config
       - /home/v1cferr/Videos/Jellyfin:/downloads
     restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./config/prowlarr:/config
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./config/radarr:/config
+      - /home/v1cferr/Videos/Jellyfin:/media
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./config/sonarr:/config
+      - /home/v1cferr/Videos/Jellyfin:/media
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    network_mode: host
+    environment:
+      - TZ=America/Sao_Paulo
+      - LOG_LEVEL=info
+    volumes:
+      - ./config/jellyseerr:/app/config
+    restart: unless-stopped
