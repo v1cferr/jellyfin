@@ -74,3 +74,12 @@ services:
     volumes:
       - ./config/jellyseerr:/app/config
     restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: host
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/Sao_Paulo
+    restart: unless-stopped
