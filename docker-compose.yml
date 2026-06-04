@@ -9,7 +9,7 @@ services:
       - TZ=America/Sao_Paulo
     volumes:
       - ./config/jellyfin:/config
-      - /home/v1cferr/Videos/Jellyfin:/media
+      - /home/v1cferr/Videos/Jellyfin:/data
     restart: unless-stopped
 
   qbittorrent:
@@ -23,7 +23,7 @@ services:
       - WEBUI_PORT=8080
     volumes:
       - ./config/qbittorrent:/config
-      - /home/v1cferr/Videos/Jellyfin:/downloads
+      - /home/v1cferr/Videos/Jellyfin:/data
     restart: unless-stopped
 
   prowlarr:
@@ -48,7 +48,7 @@ services:
       - TZ=America/Sao_Paulo
     volumes:
       - ./config/radarr:/config
-      - /home/v1cferr/Videos/Jellyfin:/media
+      - /home/v1cferr/Videos/Jellyfin:/data
     restart: unless-stopped
 
   sonarr:
@@ -61,7 +61,7 @@ services:
       - TZ=America/Sao_Paulo
     volumes:
       - ./config/sonarr:/config
-      - /home/v1cferr/Videos/Jellyfin:/media
+      - /home/v1cferr/Videos/Jellyfin:/data
     restart: unless-stopped
 
   jellyseerr:
