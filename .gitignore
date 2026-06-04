@@ -1,0 +1,15 @@
+# Ignora toda a pasta de configuração mutável dos containers
+config/
+
+# Mantém a pasta config vazia estruturalmente se você clonar o repo no futuro
+!config/.gitkeep
+
+# Ignora pastas de cache e dumps do sistema operacional
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+*.log
+
+# Ignora variáveis de ambiente locais (caso você crie um .env no futuro)
+.env
