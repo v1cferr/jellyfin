@@ -16,19 +16,22 @@ services:
   # ===========================================================================
   #  Proxy reverso e túnel
   # ===========================================================================
-  npm:
-    <<: *service-defaults
-    image: jc21/nginx-proxy-manager:latest
-    container_name: npm
-    environment:
-      TZ: ${TZ:-America/Sao_Paulo}
-    volumes:
-      - ./config/npm:/data
-      - ./config/letsencrypt:/etc/letsencrypt
-    ports:
-      - 80:80     # HTTP
-      - 81:81     # Painel de administração
-      - 443:443   # HTTPS
+  # npm (nginx-proxy-manager) DESATIVADO: o reverse-proxy agora é o Caddy do
+  # sistema (systemd), que ocupa as portas 80/443. Mantido comentado para
+  # referência/rollback. NÃO reabilitar junto com o Caddy (conflito de portas).
+  # npm:
+  #   <<: *service-defaults
+  #   image: jc21/nginx-proxy-manager:latest
+  #   container_name: npm
+  #   environment:
+  #     TZ: ${TZ:-America/Sao_Paulo}
+  #   volumes:
+  #     - ./config/npm:/data
+  #     - ./config/letsencrypt:/etc/letsencrypt
+  #   ports:
+  #     - 80:80     # HTTP
+  #     - 81:81     # Painel de administração
+  #     - 443:443   # HTTPS
 
   cloudflared:
     <<: *service-defaults
