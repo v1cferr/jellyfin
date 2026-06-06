@@ -1,99 +1,135 @@
+# ============================================================================
+#  Stack de mídia self-hosted (Jellyfin + *arr + download + proxy/tunnel)
+#  Variáveis sensíveis e de ambiente ficam no arquivo .env (ignorado pelo git)
+# ============================================================================
+
+# ---- Configuração comum reaproveitada via anchors YAML ----------------------
+x-environment: &common-env
+  PUID: ${PUID:-1000}
+  PGID: ${PGID:-1000}
+  TZ: ${TZ:-America/Sao_Paulo}
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+
 services:
+  # ===========================================================================
+  #  Proxy reverso e túnel
+  # ===========================================================================
+  npm:
+    <<: *service-defaults
+    image: jc21/nginx-proxy-manager:latest
+    container_name: npm
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - ./config/npm:/data
+      - ./config/letsencrypt:/etc/letsencrypt
+    ports:
+      - 80:80     # HTTP
+      - 81:81     # Painel de administração
+      - 443:443   # HTTPS
+
+  cloudflared:
+    <<: *service-defaults
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Defina TUNNEL_TOKEN no arquivo .env}
+
+  # ===========================================================================
+  #  Servidor de mídia e requisições
+  # ===========================================================================
   jellyfin:
-    image: linuxserver/jellyfin:latest
+    <<: *service-defaults
+    image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     network_mode: host
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
+      <<: *common-env
     volumes:
       - ./config/jellyfin:/config
       - /home/v1cferr/Videos/Jellyfin:/data
-    restart: unless-stopped
-
-  qbittorrent:
-    image: linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
-      - WEBUI_PORT=8080
-    volumes:
-      - ./config/qbittorrent:/config
-      - /home/v1cferr/Videos/Jellyfin:/data
-    restart: unless-stopped
-
-  prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
-    container_name: prowlarr
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
-    volumes:
-      - ./config/prowlarr:/config
-    restart: unless-stopped
-
-  radarr:
-    image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
-    volumes:
-      - ./config/radarr:/config
-      - /home/v1cferr/Videos/Jellyfin:/data
-    restart: unless-stopped
-
-  sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
-    network_mode: host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
-    volumes:
-      - ./config/sonarr:/config
-      - /home/v1cferr/Videos/Jellyfin:/data
-    restart: unless-stopped
 
   jellyseerr:
+    <<: *service-defaults
     image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     network_mode: host
     environment:
-      - TZ=America/Sao_Paulo
-      - LOG_LEVEL=info
+      TZ: ${TZ:-America/Sao_Paulo}
+      LOG_LEVEL: info
     volumes:
       - ./config/jellyseerr:/app/config
-    restart: unless-stopped
 
-  flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: flaresolverr
+  # ===========================================================================
+  #  Indexadores e automação (*arr)
+  # ===========================================================================
+  prowlarr:
+    <<: *service-defaults
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
     network_mode: host
     environment:
-      - LOG_LEVEL=info
-      - TZ=America/Sao_Paulo
-    restart: unless-stopped
+      <<: *common-env
+    volumes:
+      - ./config/prowlarr:/config
+
+  radarr:
+    <<: *service-defaults
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: host
+    environment:
+      <<: *common-env
+    volumes:
+      - ./config/radarr:/config
+      - /home/v1cferr/Videos/Jellyfin:/data
+
+  sonarr:
+    <<: *service-defaults
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: host
+    environment:
+      <<: *common-env
+    volumes:
+      - ./config/sonarr:/config
+      - /home/v1cferr/Videos/Jellyfin:/data
 
   bazarr:
-    image: linuxserver/bazarr:latest
+    <<: *service-defaults
+    image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
+      <<: *common-env
     volumes:
       - ./config/bazarr:/config
       - /home/v1cferr/Videos/Jellyfin:/data
     ports:
       - 6767:6767
-    restart: unless-stopped
+
+  flaresolverr:
+    <<: *service-defaults
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: host
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+      LOG_LEVEL: info
+
+  # ===========================================================================
+  #  Download
+  # ===========================================================================
+  qbittorrent:
+    <<: *service-defaults
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: host
+    environment:
+      <<: *common-env
+      WEBUI_PORT: 8080
+    volumes:
+      - ./config/qbittorrent:/config
+      - /home/v1cferr/Videos/Jellyfin:/data
