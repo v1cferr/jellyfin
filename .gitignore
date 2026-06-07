@@ -13,3 +13,6 @@ Thumbs.db
 
 # Ignora variáveis de ambiente locais (caso você crie um .env no futuro)
 .env
+
+# Anotações pessoais temporárias (uso local, não versionar)
+docs/TEMP.md
