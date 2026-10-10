@@ -178,6 +178,52 @@ seasons, titles and watch progress all work.
 Latest sorts newest-first, so episodes come out backwards. Rewriting each item's
 `DateCreated`, giving the first episode the most recent stamp, puts them back in watch order.
 
+## Seeking can reboot the TV: keep the MKV lean
+
+On 10/10/2026 the TV started **rebooting itself** whenever I skipped forward or back in Stranger
+Things season 5. Season 4 of the same show never did it, and neither did Dark.
+
+The server was not the problem. Every episode was direct play (`Static=true`, `DLNA.ORG_OP=01`),
+the byte-range requests a seek produces came back `206` from any offset, and no `ffmpeg` was
+running. The crash is inside the TV's own player, after the jump.
+
+The obvious suspects were ruled out by comparing against files that seek fine:
+
+| Check                       | Season 5        | Dark / season 4 |
+| --------------------------- | --------------- | --------------- |
+| Cues (the seek index)       | present, at end | present, at end |
+| Keyframe interval           | 1.7s to 3.2s    | 4.8s            |
+| Codec / H.264 level         | H.264 L4.0      | H.264 L3.1-4.0  |
+
+What did differ was how the files were muxed, and season 5 came from two different releases:
+
+- **E01 to E04 carried 46 subtitle tracks**, every language the source had. A seek makes the
+  player resynchronize every track at the new position.
+- **E05 to E08 carried a PNG cover as an attachment**, which ffprobe reports as a second video
+  stream (`attached_pic`).
+
+Season 4 had neither: one video, two audio tracks, two subtitles.
+
+**The fix** was a remux (stream copy, no re-encode, duration identical to the millisecond) down to
+that same lean layout: one video, the pt-BR and English audio, and only the two pt-BR subtitles
+(forced and full), with no attachments and no cover. After it, seeking stopped rebooting the TV.
+
+```bash
+ffmpeg -i in.mkv -map 0:v:0 -map 0:a -map 0:<forced-pt-br> -map 0:<full-pt-br> -c copy \
+  -map_metadata 0 -map_chapters 0 \
+  -disposition:a:0 default -disposition:a:1 0 \
+  -disposition:s:0 default+forced -disposition:s:1 0 out.mkv
+```
+
+**What is NOT known is which of the two caused it.** Both changes went in at once, and the TV
+keeps no log. My strongest guess is the 46 subtitle tracks: a 2015 set with little RAM resyncing
+that many streams is the kind of thing that runs out of memory, and running out of memory ends in a
+reboot rather than an error message. The cover is the weaker suspect. Telling them apart would take
+fixing one group and leaving the other as it was.
+
+The rule I keep from it regardless: **import into the lean layout from the start**, one video, the
+audio tracks, pt-BR subtitles only, no attachments.
+
 ## Testing without walking to the TV
 
 ### Can the TV see the server? (SSDP discovery)
@@ -229,6 +275,35 @@ In the response, per item:
 
 Swap `ObjectID` for `latest_<library-id>` to list real titles.
 
+### What the TV exposes for debugging
+
+Very little. The TV answers on the LAN (`192.168.1.20`, DHCP name `TV-Samsung-Sala`) with only two
+TCP ports open:
+
+| Port | What it is                                                             |
+| ---- | ---------------------------------------------------------------------- |
+| 7676 | UPnP media renderer (`AllShare1.0`): AVTransport, RenderingControl     |
+| 8080 | DIAL, the API the YouTube app uses to cast to it                       |
+
+No telnet, no ssh, no `sdb` (26101), so there is **no way to read the TV's own logs**. The server
+is the only side that can be observed.
+
+One useful trick: the TV never syncs its clock, so the `Date` header of any reply is really its
+**uptime since power-on**. A value like `Thu, 01 Jan 1970 00:37:20 GMT` means it booted 37 minutes
+ago, which makes it a cheap reboot detector:
+
+```bash
+curl -s -m 3 -i http://192.168.1.20:8080/ | grep -i '^date:'
+```
+
+The router (OpenWrt) sees the TV in its DHCP leases but has no `tcpdump`, and its log buffer did not
+keep the DHCP renewals a reboot would leave. To capture what the TV asks for during playback, the
+right place is the server itself, since it is one end of the stream:
+
+```bash
+sudo tcpdump -i enp7s0 -w tv.pcap host 192.168.1.20 and port 8096
+```
+
 ### Does it actually stream?
 
 ```bash
@@ -241,7 +316,8 @@ curl -s -A 'DLNADOC/1.50 SEC_HHP_[TV] UN32J4303/1.0' \
 
 ## Not verified
 
-Everything above was measured **on the server side**: discovery, browsing, the playback decision,
-and the stream arriving decodable with the right audio track. **Nothing was ever played on the TV
-itself.** The panel resolution and the absence of a Jellyfin app come from the J-series spec sheet,
-not from testing the set.
+The measurements above were taken **on the server side**: discovery, browsing, the playback
+decision, and the stream arriving decodable with the right audio track. Real playback on the set
+has since confirmed the practical parts, direct play, dubbed audio by default, pause and seeking.
+The panel resolution and the absence of a Jellyfin app still come from the J-series spec sheet,
+not from testing the set, and the cause of the seek reboot is narrowed to two suspects, not proven.
