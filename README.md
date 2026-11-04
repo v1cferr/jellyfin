@@ -183,6 +183,14 @@ TUNNEL_TOKEN=...
 
 ---
 
+## Documentação
+
+- [Fluxo de mídia](docs/fluxo-midia.md) — como baixar e deixar organizar sozinho
+- [TV da sala: Samsung UN32J4300AG](docs/tv-samsung-un32j4300.md) (em en-US): o que ela toca
+  direto, o que força transcode, o bug do plugin DLNA em séries, e como testar sem ir até a sala
+
+---
+
 ## Links úteis
 
 - Jellyfin — <https://jellyfin.org/> · <https://github.com/jellyfin/jellyfin>
